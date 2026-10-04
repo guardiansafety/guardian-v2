@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Evidence } from "../domain/evidence";
-import { createIncident } from "../domain/incident";
+import { createIncident, transitionIncident } from "../domain/incident";
 import type { AnalyzerTask } from "../inference/inference-service";
 import { evaluateIncidentFromAnalyzers } from "./incident-pipeline";
 
@@ -202,8 +202,18 @@ describe("evaluateIncidentFromAnalyzers", () => {
       score: 0.5,
     });
 
+    const monitoringIncident = transitionIncident(
+      createIncident({ id: "incident-1", at: createdAt }),
+      {
+        to: "MONITORING",
+        at: new Date("2026-10-04T17:00:01.000Z"),
+        actor: { type: "system", id: "risk-engine" },
+        reason: "Known evidence had already started review.",
+      },
+    );
+
     const result = await evaluateIncidentFromAnalyzers({
-      incident: createIncident({ id: "incident-1", at: createdAt }),
+      incident: monitoringIncident,
       evidenceHistory: [known],
       now,
       tasks: [

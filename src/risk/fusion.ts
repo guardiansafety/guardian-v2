@@ -80,23 +80,25 @@ export function evaluateRisk(input: {
   // Repeated frames from one analyzer are correlated observations, not
   // independent votes. Keep all of them for traceability, but let only the
   // strongest current contribution from each source affect the aggregate risk.
-  const strongestBySource = new Map<EvidenceSource, string>();
-  for (const item of calculated) {
-    const currentId = strongestBySource.get(item.source);
-    if (!currentId) {
-      strongestBySource.set(item.source, item.evidenceId);
-      continue;
-    }
+  const strongestBySource = new Map<
+    EvidenceSource,
+    { evidenceId: string; weightedContribution: number }
+  >();
 
-    const current = calculated.find((candidate) => candidate.evidenceId === currentId);
+  for (const item of calculated) {
+    const current = strongestBySource.get(item.source);
     if (!current || item.weightedContribution > current.weightedContribution) {
-      strongestBySource.set(item.source, item.evidenceId);
+      strongestBySource.set(item.source, {
+        evidenceId: item.evidenceId,
+        weightedContribution: item.weightedContribution,
+      });
     }
   }
 
   const contributions: RiskContribution[] = calculated.map((item) => ({
     ...item,
-    usedInDecision: strongestBySource.get(item.source) === item.evidenceId,
+    usedInDecision:
+      strongestBySource.get(item.source)?.evidenceId === item.evidenceId,
   }));
 
   const activeContributions = contributions.filter((item) => item.usedInDecision);

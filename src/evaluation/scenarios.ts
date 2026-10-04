@@ -235,7 +235,7 @@ function evidence(input: {
       provider: "guardian-eval",
       model: input.source === "vision" ? "vision-eval" : "audio-eval",
       modelVersion: "fixture-v1",
-      promptVersion: input.source === "vision" ? "vision-v1" : undefined,
+      ...(input.source === "vision" ? { promptVersion: "vision-v1" } : {}),
     },
   };
 }

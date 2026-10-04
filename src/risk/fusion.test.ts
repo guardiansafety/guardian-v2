@@ -108,7 +108,7 @@ describe("evaluateRisk", () => {
         id: "audio-1",
         source: "audio",
         signal: "aggression",
-        score: 0.8,
+        score: 1.0,
         observedAt: now,
       }),
     ];

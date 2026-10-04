@@ -38,7 +38,9 @@ export async function evaluateIncidentFromAnalyzers(input: {
   const inference = await runInferenceBatch({
     incidentId: input.incident.id,
     tasks: input.tasks,
-    defaultTimeoutMs: input.defaultTimeoutMs,
+    ...(input.defaultTimeoutMs === undefined
+      ? {}
+      : { defaultTimeoutMs: input.defaultTimeoutMs }),
   });
 
   // If every analyzer fails, missing evidence is not negative evidence.

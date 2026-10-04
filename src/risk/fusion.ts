@@ -40,6 +40,8 @@ const DEFAULT_POLICY: RiskPolicy = {
   signalWeights: {
     aggression: 1.0,
     possible_physical_altercation: 1.1,
+    person_in_distress: 1.0,
+    weapon_visible: 1.25,
     emergency_button_pressed: 1.2,
   },
   halfLifeSeconds: 30,

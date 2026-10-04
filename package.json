@@ -12,7 +12,8 @@
     "dev:api": "tsx watch src/api/server.ts",
     "dev:web": "vite",
     "start:api": "tsx src/api/server.ts",
-    "build:web": "vite build"
+    "build:web": "vite build",
+    "eval": "tsx src/evaluation/run.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.16.0",

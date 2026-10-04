@@ -102,6 +102,41 @@ describe("evaluateRisk", () => {
     expect(stale.score).toBeLessThan(fresh.score);
   });
 
+  it("does not let repeated evidence from one source masquerade as corroboration", () => {
+    const decision = evaluateRisk({
+      now,
+      evidence: [
+        evidence({
+          id: "audio-1",
+          source: "audio",
+          signal: "aggression",
+          score: 0.9,
+          observedAt: now,
+        }),
+        evidence({
+          id: "audio-2",
+          source: "audio",
+          signal: "aggression",
+          score: 0.88,
+          observedAt: now,
+        }),
+        evidence({
+          id: "audio-3",
+          source: "audio",
+          signal: "aggression",
+          score: 0.86,
+          observedAt: now,
+        }),
+      ],
+    });
+
+    expect(decision.recommendedState).toBe("MONITORING");
+    expect(decision.contributions.filter((item) => item.usedInDecision)).toHaveLength(1);
+    expect(decision.reasons).toContain(
+      "Repeated evidence from the same source was retained for traceability but not double-counted.",
+    );
+  });
+
   it("uses hysteresis to avoid flapping out of HIGH_RISK too easily", () => {
     const borderlineEvidence = [
       evidence({

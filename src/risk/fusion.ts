@@ -10,6 +10,7 @@ export interface RiskContribution {
   score: number;
   freshness: number;
   weightedContribution: number;
+  usedInDecision: boolean;
 }
 
 export interface RiskDecision {
@@ -56,7 +57,7 @@ export function evaluateRisk(input: {
 }): RiskDecision {
   const policy = mergePolicy(input.policy);
 
-  const contributions = input.evidence.map((item) => {
+  const calculated = input.evidence.map((item) => {
     const ageSeconds = Math.max(
       0,
       (input.now.getTime() - item.observedAt.getTime()) / 1000,
@@ -73,15 +74,41 @@ export function evaluateRisk(input: {
       score: item.score,
       freshness,
       weightedContribution,
-    } satisfies RiskContribution;
+    };
   });
 
-  const rawScore = contributions.reduce(
+  // Repeated frames from one analyzer are correlated observations, not
+  // independent votes. Keep all of them for traceability, but let only the
+  // strongest current contribution from each source affect the aggregate risk.
+  const strongestBySource = new Map<
+    EvidenceSource,
+    { evidenceId: string; weightedContribution: number }
+  >();
+
+  for (const item of calculated) {
+    const current = strongestBySource.get(item.source);
+    if (!current || item.weightedContribution > current.weightedContribution) {
+      strongestBySource.set(item.source, {
+        evidenceId: item.evidenceId,
+        weightedContribution: item.weightedContribution,
+      });
+    }
+  }
+
+  const contributions: RiskContribution[] = calculated.map((item) => ({
+    ...item,
+    usedInDecision:
+      strongestBySource.get(item.source)?.evidenceId === item.evidenceId,
+  }));
+
+  const activeContributions = contributions.filter((item) => item.usedInDecision);
+  const rawScore = activeContributions.reduce(
     (total, item) => total + item.weightedContribution,
     0,
   );
+
   const corroboratingSources = new Set(
-    input.evidence
+    activeContributions
       .filter((item) => item.score >= policy.corroborationThreshold)
       .map((item) => item.source),
   );
@@ -97,6 +124,11 @@ export function evaluateRisk(input: {
   const reasons: string[] = [];
   if (input.evidence.length === 0) {
     reasons.push("No evidence has been received yet.");
+  }
+  if (input.evidence.length > activeContributions.length) {
+    reasons.push(
+      "Repeated evidence from the same source was retained for traceability but not double-counted.",
+    );
   }
   if (corroborationApplied) {
     reasons.push("Independent evidence sources corroborated each other.");

@@ -28,5 +28,8 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Replay evaluation scenarios
+        run: npm run eval
+
       - name: Build React console
         run: npm run build:web

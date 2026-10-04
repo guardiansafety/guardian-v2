@@ -137,6 +137,34 @@ describe("evaluateRisk", () => {
     );
   });
 
+  it("does not let stale high-score evidence earn a corroboration bonus", () => {
+    const staleAt = new Date("2026-10-04T16:58:30.000Z");
+    const decision = evaluateRisk({
+      now,
+      evidence: [
+        evidence({
+          id: "audio-stale",
+          source: "audio",
+          signal: "aggression",
+          score: 1.0,
+          observedAt: staleAt,
+        }),
+        evidence({
+          id: "vision-stale",
+          source: "vision",
+          signal: "possible_physical_altercation",
+          score: 1.0,
+          observedAt: staleAt,
+        }),
+      ],
+    });
+
+    expect(decision.recommendedState).toBe("MONITORING");
+    expect(decision.reasons).not.toContain(
+      "Independent evidence sources corroborated each other.",
+    );
+  });
+
   it("uses hysteresis to avoid flapping out of HIGH_RISK too easily", () => {
     const borderlineEvidence = [
       evidence({

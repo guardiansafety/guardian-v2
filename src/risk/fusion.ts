@@ -109,7 +109,10 @@ export function evaluateRisk(input: {
 
   const corroboratingSources = new Set(
     activeContributions
-      .filter((item) => item.score >= policy.corroborationThreshold)
+      .filter(
+        (item) =>
+          item.score * item.freshness >= policy.corroborationThreshold,
+      )
       .map((item) => item.source),
   );
   const corroborationApplied = corroboratingSources.size >= 2;

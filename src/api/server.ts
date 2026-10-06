@@ -5,6 +5,15 @@ import { buildDemoIncidentView } from "./demo-incident";
 export function createApp() {
   const app = express();
 
+  app.get("/", (_request, response) => {
+    response.json({
+      service: "guardian-v2-api",
+      ok: true,
+      health: "/healthz",
+      demoIncident: "/api/incidents/demo",
+    });
+  });
+
   app.get("/healthz", (_request, response) => {
     response.json({ ok: true });
   });

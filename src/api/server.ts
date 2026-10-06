@@ -21,7 +21,7 @@ export function createApp() {
 }
 
 if (require.main === module) {
-  const port = 3000;
+  const port = Number(process.env.API_PORT ?? "3101");
 
   createApp().listen(port, () => {
     console.log(`Guardian v2 API listening on http://localhost:${port}`);

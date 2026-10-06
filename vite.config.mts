@@ -1,5 +1,7 @@
 import { defineConfig } from "vite";
 
+const apiPort = process.env.API_PORT ?? "3101";
+
 export default defineConfig({
   build: {
     outDir: "dist/web",
@@ -7,7 +9,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/api": "http://localhost:3000",
+      "/api": `http://localhost:${apiPort}`,
     },
   },
 });

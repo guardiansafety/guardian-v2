@@ -1,6 +1,7 @@
 import type { Evidence } from "../domain/evidence";
 import type { Incident } from "../domain/incident";
 import type { AnalyzerFailure } from "../inference/inference-service";
+import type { AlertDelivery } from "../notifications/delivery";
 import type { RiskDecision } from "../risk/fusion";
 
 export interface IncidentConsoleView {
@@ -28,6 +29,19 @@ export interface IncidentConsoleView {
     degraded: boolean;
     failures: readonly AnalyzerFailure[];
   };
+  alertDelivery: {
+    status: AlertDelivery["status"];
+    attempts: number;
+    idempotencyKey: string;
+    providerMessageId: string | null;
+    lastError: string | null;
+    updatedAt: string;
+  } | null;
+  actions: {
+    canDeliver: boolean;
+    canAcknowledge: boolean;
+    canResolve: boolean;
+  };
   timeline: readonly {
     from: Incident["state"];
     to: Incident["state"];
@@ -43,12 +57,15 @@ export function buildIncidentConsoleView(input: {
   decision: RiskDecision | null;
   degraded: boolean;
   failures: readonly AnalyzerFailure[];
+  delivery?: AlertDelivery | null;
 }): IncidentConsoleView {
   const usedEvidenceIds = new Set(
     input.decision?.contributions
       .filter((item) => item.usedInDecision)
       .map((item) => item.evidenceId) ?? [],
   );
+
+  const delivery = input.delivery ?? null;
 
   return {
     incident: {
@@ -78,6 +95,24 @@ export function buildIncidentConsoleView(input: {
     inference: {
       degraded: input.degraded,
       failures: input.failures,
+    },
+    alertDelivery: delivery
+      ? {
+          status: delivery.status,
+          attempts: delivery.attempts,
+          idempotencyKey: delivery.idempotencyKey,
+          providerMessageId: delivery.providerMessageId,
+          lastError: delivery.lastError,
+          updatedAt: delivery.updatedAt.toISOString(),
+        }
+      : null,
+    actions: {
+      canDeliver:
+        delivery?.status === "PENDING" ||
+        (delivery?.status === "FAILED" && delivery.nextAttemptAt !== null),
+      canAcknowledge:
+        input.incident.state === "ALERTED" && delivery?.status === "SENT",
+      canResolve: input.incident.state === "ACKED",
     },
     timeline: input.incident.transitions.map((transition) => ({
       from: transition.from,

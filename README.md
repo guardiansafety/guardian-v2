@@ -46,7 +46,7 @@ The implementation currently includes:
 - failure-tolerant analyzer orchestration
 - canonical evidence ordering so async completion timing does not change product state
 - a TypeScript/Express API
-- a React incident console that exposes evidence, provenance, failures, and decision trace
+- an interactive React incident-operations console that drives alert delivery, acknowledgement, resolution, evidence provenance, failures, and the decision trace
 - a SQLite-backed notification outbox with leases, retry policy, and stable provider idempotency keys
 - a deterministic replay harness that runs in CI
 
@@ -75,9 +75,13 @@ http://localhost:3101
 Useful endpoints:
 
 ```text
-GET /
-GET /healthz
-GET /api/incidents/demo
+GET  /
+GET  /healthz
+GET  /api/incidents/demo
+POST /api/incidents/demo/actions/deliver
+POST /api/incidents/demo/actions/acknowledge
+POST /api/incidents/demo/actions/resolve
+POST /api/incidents/demo/actions/reset
 ```
 
 Start the React console in a second terminal:
@@ -92,7 +96,19 @@ Then open:
 http://localhost:5173
 ```
 
-The browser demo uses deterministic analyzer fixtures so the interview walkthrough is stable and does not depend on a paid external model call. The real Gemini adapter is implemented and contract-tested separately.
+The browser demo uses deterministic analyzer fixtures so the interview walkthrough is stable and does not depend on a paid external model call. The control path is real: the incident is evaluated, committed to the SQLite outbox, processed by the notification worker with a stable idempotency key, acknowledged through the state machine, and then resolved.
+
+For the live walkthrough:
+
+```text
+Open incident
+→ Run delivery worker
+→ Acknowledge incident
+→ Resolve incident
+→ Reset scenario
+```
+
+The real Gemini adapter is implemented and contract-tested separately.
 
 ## Verify the whole project
 

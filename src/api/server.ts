@@ -1,16 +1,27 @@
 import express from "express";
 
-import { buildDemoIncidentView } from "./demo-incident";
+import {
+  demoIncidentSession,
+  type DemoIncidentAction,
+} from "./demo-incident";
+
+const DEMO_ACTIONS = new Set<DemoIncidentAction>([
+  "deliver",
+  "acknowledge",
+  "resolve",
+  "reset",
+]);
 
 export function createApp() {
   const app = express();
+  app.use(express.json());
 
   app.get("/", (_request, response) => {
     response.json({
       service: "guardian-v2-api",
       ok: true,
       health: "/healthz",
-      demoIncident: "/api/incidents/demo",
+      incidentConsole: "/api/incidents/demo",
     });
   });
 
@@ -20,11 +31,31 @@ export function createApp() {
 
   app.get("/api/incidents/demo", async (_request, response, next) => {
     try {
-      response.json(await buildDemoIncidentView());
+      response.json(await demoIncidentSession.getView());
     } catch (error) {
       next(error);
     }
   });
+
+  app.post(
+    "/api/incidents/demo/actions/:action",
+    async (request, response) => {
+      const action = request.params.action as DemoIncidentAction;
+
+      if (!DEMO_ACTIONS.has(action)) {
+        response.status(404).json({ error: "Unknown incident action" });
+        return;
+      }
+
+      try {
+        response.json(await demoIncidentSession.act(action));
+      } catch (error) {
+        response.status(409).json({
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    },
+  );
 
   return app;
 }

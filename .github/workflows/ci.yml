@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  domain:
+  project:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,14 +22,5 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Test
-        run: npm test
-
-      - name: Replay evaluation scenarios
-        run: npm run eval
-
-      - name: Build React console
-        run: npm run build:web
+      - name: Verify project
+        run: npm run check

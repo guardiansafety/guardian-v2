@@ -2,41 +2,57 @@
 
 Guardian v2 is an independent continuation of the original Guardian safety prototype.
 
-The original project explored whether a wearable could capture useful audio, visual, and location context during a potential emergency. This repository revisits the idea with a different question:
+The original hackathon project proved that a wearable could collect audio, visual, and location context around a possible emergency. V2 asks a different question:
 
-> What does the software between **AI perception** and **real-world action** need to look like if we want to trust it?
+> What should exist between **probabilistic AI perception** and **real-world product action** if the workflow has to be understandable, replayable, and retry-safe?
 
-The v2 design treats model output as evidence, not as an instruction. Audio, vision, and device analyzers feed a typed evidence contract; deterministic product logic owns risk, state transitions, degraded-mode behavior, and what a human sees.
+The core design rule is simple: **model output is evidence, not an instruction**.
 
 ## Current architecture
 
 ```text
-analyzers
-   ↓
-validated Evidence
-   ↓
-risk fusion
-   ↓
-incident lifecycle
-   ↓
-React incident console
+Gemini / audio / device analyzers
+            ↓
+     validated Evidence
+       + provenance
+            ↓
+        risk fusion
+   freshness + source rules
+            ↓
+     incident lifecycle
+            ↓
+ durable alert commitment
+            ↓
+ SQLite notification outbox
+            ↓
+ retry-safe provider worker
+
+            +
+ React incident console
+            +
+ deterministic replay evals
 ```
 
 The implementation currently includes:
 
-- typed evidence with model / prompt provenance
+- TypeScript evidence contracts with runtime Zod validation
+- provider/model/prompt provenance
+- a current Google GenAI vision adapter using structured output
+- freshness-aware multimodal risk fusion
+- strongest-per-source aggregation so repeated frames are not independent votes
+- cross-source corroboration and hysteresis
 - an explicit incident state machine
-- freshness-aware, multimodal risk fusion with hysteresis
-- deduplication and idempotent evidence ingestion
-- failure-tolerant inference orchestration with timeouts and runtime validation
-- a deterministic end-to-end incident pipeline
-- a TypeScript/Express read API
-- a React incident console that exposes evidence, failures, provenance, and decision trace
-- a replay evaluation harness for high-signal incident scenarios
+- duplicate-event and conflicting-ID handling
+- failure-tolerant analyzer orchestration
+- canonical evidence ordering so async completion timing does not change product state
+- a TypeScript/Express API
+- a React incident console that exposes evidence, provenance, failures, and decision trace
+- a SQLite-backed notification outbox with leases, retry policy, and stable provider idempotency keys
+- a deterministic replay harness that runs in CI
 
-The original hackathon backend is intentionally still present at the repository root so the evolution from prototype to v2 remains inspectable.
+The original hackathon backend remains at the repository root intentionally so the v1 → v2 evolution is inspectable rather than rewritten out of history.
 
-## Run the current v2 slice
+## Run the demo
 
 Install dependencies:
 
@@ -44,37 +60,82 @@ Install dependencies:
 npm install
 ```
 
-Run the API:
+Start the API in one terminal:
 
 ```bash
 npm run dev:api
 ```
 
-Run the React console in a second terminal:
+The API defaults to:
+
+```text
+http://localhost:3101
+```
+
+Useful endpoints:
+
+```text
+GET /
+GET /healthz
+GET /api/incidents/demo
+```
+
+Start the React console in a second terminal:
 
 ```bash
 npm run dev:web
 ```
 
-Then open the Vite development URL. The console loads the deterministic demo incident from:
+Then open:
 
 ```text
-GET /api/incidents/demo
+http://localhost:5173
 ```
 
-Run the automated checks:
+The browser demo uses deterministic analyzer fixtures so the interview walkthrough is stable and does not depend on a paid external model call. The real Gemini adapter is implemented and contract-tested separately.
+
+## Verify the whole project
+
+Run one command:
 
 ```bash
-npm run typecheck
-npm test
+npm run check
+```
+
+That runs:
+
+```text
+TypeScript typecheck
+→ unit/integration tests
+→ replay evaluation suite
+→ production React build
+```
+
+You can also run the replay harness directly:
+
+```bash
 npm run eval
-npm run build:web
 ```
 
 ## Evaluation philosophy
 
-The replay harness exists so a model, prompt, or policy change can be challenged against the same incident scenarios instead of being accepted because a demo looked better.
+The replay harness is intentionally closer to backtesting than demo testing: a model, prompt, threshold, or policy change should face the same incident scenarios before it is accepted.
 
-The current scenarios cover weak single-modality evidence, fresh multimodal corroboration, repeated correlated frames, partial provider failure, total analyzer failure, and stale multimodal evidence.
+Current scenarios cover:
 
-The project is still incremental. Persistence, reliable notification delivery, real provider adapters, and broader measured evaluation come next.
+- weak single-modality evidence
+- fresh audio + vision corroboration
+- repeated correlated frames
+- partial analyzer failure
+- total analyzer failure
+- stale multimodal evidence
+
+The harness already caught one policy bug: stale high-score observations could still earn a corroboration bonus. Corroboration now requires signal strength that remains strong **after freshness decay**, and the scenario stays as a regression test.
+
+A useful next extension would be metamorphic evaluation: reorder equivalent async events, duplicate frames, delay a modality, or perturb irrelevant image content and check that semantically equivalent incidents still produce the same product decision.
+
+## Scope
+
+This is not presented as a production emergency-response system. It is a focused engineering reconstruction of the critical path between AI perception and trustworthy action.
+
+The same architecture shape appears in other AI-native workflows: models collect and interpret uncertain information, while deterministic software owns contracts, state, side effects, auditability, evaluation, and the human-facing workflow.
